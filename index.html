@@ -1,16 +1,12 @@
 <html>
 	<head>
 		<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-		<!--<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>-->
 		<script src="moment.js"></script>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
 		<script src="jquery.csv.js"></script>
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-		<!--<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.tablesorter/2.28.12/js/jquery.tablesorter.min.js">-->
-		<link rel="stylesheet" type="text/css" href="css/calcstyle.css">
-		<!--<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>-->
 
-		<title>GT Safe Walk Maps</title>
+		<title>GT Safe Walk Map</title>
 	    <style>
 	      /* Always set the map height explicitly to define the size of the div
 	       * element that contains the map. */
@@ -18,12 +14,9 @@
 	      	width : 100%;
 	        height: 75%;
 	      }
-	      /* Optional: Makes the sample page fill the window. */
+	      /* Makes the page fill the window. */
 	      html, body {
 	        height: 100%;
-			  background-color: papayawhip;
-	        /*margin: 0;*/
-	        /*padding: 0;*/
 	      }
 	      #floating-panel {
 	        position: absolute;
@@ -50,279 +43,323 @@
 	    </style>
 	</head>
 	<body>
-		<div class="row">
-			<!-- <p>Super duper great gt safe route map</p> -->
-			<header><h2 style="font-family: 'Al Bayan'; color: darkblue; text-align: center; font-size: xx-large">GT Crime Map</h2></header>
-			<div class="col-sm-6">
+		<div class="container-fluid">
+			<div class="row">
+				<h2 style="text-align: center;">GT Safe Walk Map</h2>
+				<div class="col-sm-4 col-sm-offset-2" style="padding-right: 5%; padding-left: 5%;">
+					Start Location<br>
+					<div class="row">
+			  			<input class="form-control" style="width: 100%;" type="text" name="start" id="start"/>
+			  			<button class="btn btn-primary" style="width: 100%;" type="button" id="loadLocation">Use Current Location</button>
+					</div>
 
-				Start:<br>
-				<div class="row">
-		  			<input class="form-control" style="width: 98%; margin-left: 10px;" type="text" name="start" id="start"/>
-		  			<button class="btn btn-primary" style="width: 98%; margin-left: 10px;" type="button" id="loadLocation">Use Current Location</button>
+		  			Destination<br>
+					<div class="row">
+			  			<input class="form-control" style="width: 100%;" type="text" name="end" id="end"/>
+			  			<button class="btn btn-primary" style="width: 100%;" type="button" id="search">Find Route</button><br>
+					</div>
 				</div>
 
-	  			Destination:<br>
-				<div class="row">
-		  			<input class="form-control" style="width: 98%; margin-left: 10px;" type="text" name="end" id="end"/>
-		  			<button class="btn btn-primary" style="width: 98%; margin-left: 10px" type="button" id="search">Find Route</button><br>
+				<div class="col-sm-4" style="padding-right: 5%; padding-left: 5%;">
+					Time of Day <small>(map shows crime frequency for the specified time)</small><br>
+		  			<div class="row">
+		  				<input class="form-control" placeholder="HH:mm (24 hour time)" style="width: 100%;" type="text" name="time" id="time"/>
+		  			</div>
+		  			<div class="row">
+			  			<button class="btn btn-primary btn-block" style="width: 100%;" type="button" id="reloadMap">Reload Map with Custom Time</button>
+			  			<button class="btn btn-primary" style="width: 100%; margin-top: 3px;" type="button" id="loadTime">Set to Current Time</button>
+			  			<button class="btn btn-success" style="width: 100%; margin-top: 3px; display: none;" type="button" id="openInGoogleMaps">Open Route in Google Maps</button>
+		  			</div>
+
 				</div>
 			</div>
-
-			<div class="col-sm-6">
-				Time:<br>
-	  			<div class="row">
-	  				<input class="form-control" placeholder="hh:mm (24 hour format)" style="width: 98%; margin-left: 3px;" type="text" name="time" id="time"/>
-	  			</div>
-	  			<div class="row">
-		  			<button class="btn btn-primary btn-block" style="width:98%; margin-left: 3px" type="button" id="reloadMap">Reload With Custom Time</button>
-		  			<button class="btn btn-primary" style="width:98%; margin-top: 3px; margin-left: 3px" type="button" id="loadTime">Use Current Time</button>
-	  			</div>
-
-			</div>
-
-
-  			</div>
+			<br>
+		    <div class="row">
+		    	<div class="col-sm-10 col-sm-offset-1">
+		    		<div id="map"></div>
+		    	</div>
+		    </div>
 		</div>
-		<br>
-	    <!-- <div id="floating-panel">
-			<button onclick="toggleHeatmap()">Toggle Heatmap</button>
-			<button onclick="changeGradient()">Change gradient</button>
-			<button onclick="changeRadius()">Change radius</button>
-			<button onclick="changeOpacity()">Change opacity</button>
-	    </div> -->
-	    <div class="row">
-	    	<div class="col-sm-10 col-sm-offset-1">
-	    		<div id="map"></div>
-	    	</div>
-	    </div>
-	    <script>
-		var map, heatmap, directionsDisplay, directionsService, geocoder, crimeTimeArray, crimeArray, currentTime, mapBounds;
-
-		function initMap() {
-			map = new google.maps.Map(document.getElementById('map'), {
-			  zoom: 17,
-			  center: {lat: 33.7800134336999, lng: -84.3995025802999},
-			  mapTypeId: 'roadmap'
-			});
-			mapBounds = new google.maps.LatLngBounds();
-			directionsService = new google.maps.DirectionsService();
-			directionsDisplay = new google.maps.DirectionsRenderer();
-			geocoder = new google.maps.Geocoder();
-			directionsDisplay.setMap(map);
-			currentTime = moment().format("hh:mm");
-			$("#time").val(currentTime);
-
-			crimeTimeArray = [];
-			$.ajax({
-			    url: "crimelog.csv",
-			    async: false,
-			    success: function (csvd) {
-			        data = $.csv.toArrays(csvd);
-			        var counter = 0;
-			        $.each(data, function(index, value) {
-			        	if (value.length > 1) {
-				        	lat = value[15].replace(/[^0-9\-\.]/g, '');
-				        	lng = value[16].replace(/[^0-9\-\.]/g, '');
-				        	if($.isNumeric(lat) && $.isNumeric(lng)) {
-					    		point = new google.maps.LatLng(lat, lng);
-				        		time = value[2].replace(/[^0-9\:]/g, '');
-				        		if (time.length > 0) {
-					        		entry = { _point: point, _time:time};
-					        		mapBounds.extend(point);
-						    		crimeTimeArray.push(entry);
-						    		//crimeArray.push(point);
-				        		}
-				        	}
-			        	}
-			        });
-			    },
-			    dataType: "text",
-			});
-			map.fitBounds(mapBounds);
-
-			heatmap = new google.maps.visualization.HeatmapLayer({
-			  data: getPoints(),
-			  map: map
-			});
-			heatmap.set('radius', 50);
-
-			if (navigator.geolocation) {
-			     navigator.geolocation.getCurrentPosition(function (position) {
-			        initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-			        map.setCenter(initialLocation);
-			        codeAddress(initialLocation);
-		     	});
-			}
-		}
-
-		function toggleHeatmap() {
-			heatmap.setMap(heatmap.getMap() ? null : map);
-		}
-
-		function changeGradient() {
-			var gradient = [
-			  'rgba(0, 255, 255, 0)',
-			  'rgba(0, 255, 255, 1)',
-			  'rgba(0, 191, 255, 1)',
-			  'rgba(0, 127, 255, 1)',
-			  'rgba(0, 63, 255, 1)',
-			  'rgba(0, 0, 255, 1)',
-			  'rgba(0, 0, 223, 1)',
-			  'rgba(0, 0, 191, 1)',
-			  'rgba(0, 0, 159, 1)',
-			  'rgba(0, 0, 127, 1)',
-			  'rgba(63, 0, 91, 1)',
-			  'rgba(127, 0, 63, 1)',
-			  'rgba(191, 0, 31, 1)',
-			  'rgba(255, 0, 0, 1)'
-			]
-			heatmap.set('gradient', heatmap.get('gradient') ? null : gradient);
-		}
-
-		function changeRadius() {
-			heatmap.set('radius', heatmap.get('radius') ? null : 20);
-		}
-
-		function changeOpacity() {
-			heatmap.set('opacity', heatmap.get('opacity') ? null : 0.2);
-		}
-
-		// Heatmap data: 500 Points
-		function getPoints() {
-			crimeArray = [];
-
-			//currentTime = moment().format("hh:mm:ss");
-			curTimeHour = currentTime.split(":")[0];
-			$.each(crimeTimeArray, function(index, value) {
-				crimeTime = value['_time'];
-				crimeTimeHour = crimeTime.split(":")[0];
-				dif = Math.abs(crimeTimeHour - curTimeHour);
-				if (dif < 3 || dif > 21) {
-					crimeArray.push(value['_point']);
-				}
-			});
-			return crimeArray;
-		}
-
-		function codeAddress(latLng) {
-		    geocoder.geocode( { 'location': latLng}, function(results, status) {
-		      	if (status == 'OK') {
-		      		if (results[0]) {
-		        		$("#start").val(results[0].formatted_address);
-		      		}
-		      	} else {
-		        	alert('Geocode was not successful for the following reason: ' + status);
-		      	}
-		    });
-	  	}
-
-	  	function findBestPath(results) {
-	  		var polyline = new google.maps.Polyline({
-			  	path: [],
-			  	strokeColor: '#FF0000',
-			  	strokeWeight: 3
-			});
-			var bounds = new google.maps.LatLngBounds();
-			var routeNumber = 0;
-			var minCrimeHits = 100000;
-			var bestRouteIndex = 0;
-			console.log("results length");
-			console.log(results.routes.length);
-			$.each(results.routes, function(index, value) {
-				var crimeHits = 0;
-				var legs = value.legs;
-				for (i=0;i<legs.length;i++) {
-				  	var steps = legs[i].steps;
-				  	for (j=0;j<steps.length;j++) {
-				    	var nextSegment = steps[j].path;
-				    	for (k=0;k<nextSegment.length;k++) {
-				      		polyline.getPath().push(nextSegment[k]);
-				      		bounds.extend(nextSegment[k]);
-				    	}
-				  	}
-				}
-				$.each(crimeArray, function(index, value) {
-					if (google.maps.geometry.poly.isLocationOnEdge(value, polyline, .00015)) {
-	    				console.log("got a hit");
-	    				crimeHits = crimeHits + 1;
-	  				}
-				})
-				console.log("crime hits " + crimeHits)
-				if (crimeHits < minCrimeHits) {
-					minCrimeHits = crimeHits;
-					bestRouteIndex = routeNumber;
-				}
-				routeNumber = routeNumber + 1;
-			});
-			console.log($.type(results.routes));
-			return bestRouteIndex;
-	  	}
-
-		$("#search").click(function() {
-			var start = document.getElementById('start').value;
-		  	var end = document.getElementById('end').value;
-		  	if (!start.toLowerCase().indexOf("georgia tech") >= 0) {
-		  		start = "Georgia Tech, " + start;
-		  	}
-		  	if (!end.toLowerCase().indexOf("georgia tech") >= 0) {
-		  		end = "Georgia Tech, " + end;
-		  	}
-		  	var request = {
-		    	origin: start,
-		    	destination: end,
-		    	provideRouteAlternatives : true,
-		    	travelMode: 'WALKING'
-		  	};
-		  	directionsService.route(request, function(results, status) {
-		    	if (status == 'OK') {
-		    		bestRoute = findBestPath(results);
-		    		console.log(bestRoute);
-		    		directionsDisplay.setMap(null);
-		    		directionsDisplay = new google.maps.DirectionsRenderer({
-                    	map: map,
-                    	directions: results,
-                    	routeIndex: bestRoute
-                	});
-		      		// directionsDisplay.setDirections(bestRoute);
-		    	}
-		  	});
-		});
-
-		$("#loadLocation").click(function() {
-			if (navigator.geolocation) {
-			     navigator.geolocation.getCurrentPosition(function (position) {
-			        initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-			        map.setCenter(initialLocation);
-			        codeAddress(initialLocation);
-		     	});
-			}
-		});
-
-		$("#loadTime").click(function() {
-			currentTime = moment().format("hh:mm");
-			$("#time").val(currentTime);
-			$("#reloadMap").click();
-		});
-
-		$("#reloadMap").click(function() {
-			currentTime = $("#time").val();
-			if(!moment(currentTime,"hh:mm", true).isValid()) {
-				currentTime = moment().format("hh:mm");
-				$("#time").val(currentTime);
-			}
-			if(heatmap) {
-				heatmap.setMap(null);
-			}
-			heatmap = new google.maps.visualization.HeatmapLayer({
-			    data: getPoints(),
-			    map: map
-			});
-			heatmap.set('radius', 50);
-		});
-
-	    </script>
-	    <script async defer
-	        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyARX8uH1Dy_8KpRn2pNzRkXJZdN9hMUSlY&libraries=visualization&callback=initMap">
-	    </script>
 	</body>
+    <script>
+	var map, heatmap, directionsDisplay, directionsService, geocoder, crimeTimeArray, crimeArray, currentTime, mapBounds, uriOrigin, uriDestination;
+
+	function initMap() {
+		map = new google.maps.Map(document.getElementById('map'), {
+		  center: {lat: 33.777251, lng: -84.396185},
+		  zoom: 16,
+		  mapTypeId: 'roadmap'
+		});
+		map.setZoom(16);
+		mapBounds = new google.maps.LatLngBounds();
+		directionsService = new google.maps.DirectionsService();
+		directionsDisplay = new google.maps.DirectionsRenderer();
+		geocoder = new google.maps.Geocoder();
+		directionsDisplay.setMap(map);
+		currentTime = moment().format("HH:mm");
+		$("#time").val(currentTime);
+
+		crimeTimeArray = [];
+		$.ajax({
+		    url: "crimelog.csv",
+		    async: false,
+		    success: function (csvd) {
+		        data = $.csv.toArrays(csvd);
+		        var counter = 0;
+		        $.each(data, function(index, value) {
+		        	if (value.length > 1) {
+			        	lat = value[15].replace(/[^0-9\-\.]/g, '');
+			        	lng = value[16].replace(/[^0-9\-\.]/g, '');
+			        	if($.isNumeric(lat) && $.isNumeric(lng)) {
+				    		point = new google.maps.LatLng(lat, lng);
+			        		time = value[2].replace(/[^0-9\:]/g, '');
+			        		if (time.length > 0) {
+				        		entry = { _point: point, _time:time};
+				        		mapBounds.extend(point);
+					    		crimeTimeArray.push(entry);
+					    		//crimeArray.push(point);
+			        		}
+			        	}
+		        	}
+		        });
+		    },
+		    dataType: "text",
+		});
+		map.fitBounds(mapBounds);
+
+		heatmap = new google.maps.visualization.HeatmapLayer({
+		  data: getPoints(),
+		  map: map
+		});
+		heatmap.set('radius', 50);
+
+		if (navigator.geolocation) {
+		     navigator.geolocation.getCurrentPosition(function (position) {
+		        initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+		        map.setCenter(initialLocation);
+		        map.setZoom(16);
+		        codeAddress(initialLocation);
+	     	});
+		}
+	}
+
+	function toggleHeatmap() {
+		heatmap.setMap(heatmap.getMap() ? null : map);
+	}
+
+	function changeGradient() {
+		var gradient = [
+		  'rgba(0, 255, 255, 0)',
+		  'rgba(0, 255, 255, 1)',
+		  'rgba(0, 191, 255, 1)',
+		  'rgba(0, 127, 255, 1)',
+		  'rgba(0, 63, 255, 1)',
+		  'rgba(0, 0, 255, 1)',
+		  'rgba(0, 0, 223, 1)',
+		  'rgba(0, 0, 191, 1)',
+		  'rgba(0, 0, 159, 1)',
+		  'rgba(0, 0, 127, 1)',
+		  'rgba(63, 0, 91, 1)',
+		  'rgba(127, 0, 63, 1)',
+		  'rgba(191, 0, 31, 1)',
+		  'rgba(255, 0, 0, 1)'
+		]
+		heatmap.set('gradient', heatmap.get('gradient') ? null : gradient);
+	}
+
+	function changeRadius() {
+		heatmap.set('radius', heatmap.get('radius') ? null : 20);
+	}
+
+	function changeOpacity() {
+		heatmap.set('opacity', heatmap.get('opacity') ? null : 0.2);
+	}
+
+	// Heatmap data: 500 Points
+	function getPoints() {
+		crimeArray = [];
+		curTimeHour = parseInt(currentTime.split(":")[0]);
+		curMinutes = (curTimeHour * 60) + parseInt(currentTime.split(":")[1]);
+		$.each(crimeTimeArray, function(index, value) {
+			crimeTime = value['_time'];
+			crimeTimeHour = parseInt(crimeTime.split(":")[0]);
+			crimeMinutes = (crimeTimeHour * 60) + parseInt(crimeTime.split(":")[1]);
+			dif = Math.abs(crimeMinutes - curMinutes);
+			if (dif < 120 || dif > 1320) {
+				crimeArray.push(value['_point']);
+			}
+		});
+		return crimeArray;
+	}
+
+	function codeAddress(latLng) {
+	    geocoder.geocode( { 'location': latLng}, function(results, status) {
+	      	if (status == 'OK') {
+	      		if (results[0]) {
+	        		$("#start").val(results[0].formatted_address);
+	      		}
+	      	} else {
+	        	alert('Geocode was not successful for the following reason: ' + status);
+	      	}
+	    });
+  	}
+
+  	function findBestPath(results) {
+  		var polyline = new google.maps.Polyline({
+		  	path: [],
+		  	strokeColor: '#FF0000',
+		  	strokeWeight: 3
+		});
+		var bounds = new google.maps.LatLngBounds();
+		var routeNumber = 0;
+		var minCrimeHits = 100000;
+		var bestRouteIndex = 0;
+		console.log("results length");
+		console.log(results.routes.length);
+		$.each(results.routes, function(index, value) {
+			var crimeHits = 0;
+			var legs = value.legs;
+			for (i=0;i<legs.length;i++) {
+			  	var steps = legs[i].steps;
+			  	for (j=0;j<steps.length;j++) {
+			    	var nextSegment = steps[j].path;
+			    	for (k=0;k<nextSegment.length;k++) {
+			      		polyline.getPath().push(nextSegment[k]);
+			      		bounds.extend(nextSegment[k]);
+			    	}
+			  	}
+			}
+			$.each(crimeArray, function(index, value) {
+				if (google.maps.geometry.poly.isLocationOnEdge(value, polyline, .00015)) {
+    				console.log("got a hit");
+    				crimeHits = crimeHits + 1;
+  				}
+			})
+			console.log("crime hits " + crimeHits)
+			if (crimeHits < minCrimeHits) {
+				minCrimeHits = crimeHits;
+				bestRouteIndex = routeNumber;
+			}
+			routeNumber = routeNumber + 1;
+		});
+		console.log($.type(results.routes));
+		return bestRouteIndex;
+  	}
+
+  	function reloadMap() {
+  		currentTime = $("#time").val();
+		if (currentTime.split(":")[0].length == 1) {
+			currentTime = "0" + currentTime;
+		}
+		if(!moment(currentTime,"HH:mm", true).isValid()) {
+			currentTime = moment().format("HH:mm");
+			$("#time").val(currentTime);
+		}
+		if(heatmap) {
+			heatmap.setMap(null);
+		}
+		heatmap = new google.maps.visualization.HeatmapLayer({
+		    data: getPoints(),
+		    map: map
+		});
+		heatmap.set('radius', 50);
+  	}
+
+  	function search() {
+  		var start = document.getElementById('start').value;
+	  	var end = document.getElementById('end').value;
+	  	if (!start.toLowerCase().indexOf("georgia tech") >= 0) {
+	  		start = "Georgia Tech, " + start;
+	  	}
+	  	if (!end.toLowerCase().indexOf("georgia tech") >= 0) {
+	  		end = "Georgia Tech, " + end;
+	  	}
+
+   		uriOrigin = start.replace(/[^a-z0-9\s]/gi, '').replace(/[_\s]/g, '+');
+   		uriDestination = end.replace(/[^a-z0-9\s]/gi, '').replace(/[_\s]/g, '+');
+	  	var request = {
+	    	origin: start,
+	    	destination: end,
+	    	provideRouteAlternatives : true,
+	    	travelMode: 'WALKING'
+	  	};
+	  	directionsService.route(request, function(results, status) {
+	    	if (status == 'OK') {
+	    		bestRoute = findBestPath(results);
+	    		console.log(bestRoute);
+	    		directionsDisplay.setMap(null);
+	    		directionsDisplay = new google.maps.DirectionsRenderer({
+                	map: map,
+                	directions: results,
+                	routeIndex: bestRoute
+            	});
+	    	}
+	  	});
+	  	$("#openInGoogleMaps").show();
+  	}
+
+	$("#search").click(function() {
+		if ($("#start").val().length != 0 && $("#end").val().length != 0) {
+            search();
+   		}
+	});
+
+	$("#loadLocation").click(function() {
+		if (navigator.geolocation) {
+		     navigator.geolocation.getCurrentPosition(function (position) {
+		        initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+		        map.setCenter(initialLocation);
+		        codeAddress(initialLocation);
+	     	});
+		}
+	});
+
+	$("#loadTime").click(function() {
+		currentTime = moment().format("HH:mm");
+		$("#time").val(currentTime);
+		$("#reloadMap").click();
+	});
+
+	$("#reloadMap").click(function() {
+		reloadMap();
+	});
+
+	$('#time').on('keypress', function (e) {
+        if(e.which === 13){
+            $(this).attr("disabled", "disabled");
+            reloadMap();
+            $(this).removeAttr("disabled");
+        }
+   	});
+
+   	$("#start").on('keypress', function(e) {
+   		if(e.which === 13){
+	   		$(this).attr("disabled", "disabled");
+	        if ($("#start").val().length != 0 && $("#end").val().length != 0) {
+	            search();
+	   		}
+	        $(this).removeAttr("disabled");
+    	}
+   	});
+
+   	$("#end").on('keypress', function(e) {
+   		if(e.which === 13){
+   			$(this).attr("disabled", "disabled");
+   			if ($("#start").val().length != 0 && $("#end").val().length != 0) {
+            	search();
+   			}
+        	$(this).removeAttr("disabled");
+   		}
+   	});
+
+   	$("#openInGoogleMaps").click(function (e) {
+   		var mapsUrl = "https://www.google.com/maps/dir/?api=1&origin=" + uriOrigin + "&destination=" + uriDestination + "&travelmode=walking";
+   		window.location.assign(mapsUrl);
+		// window.open(mapsUrl,"_self")
+   	});
+
+    </script>
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyARX8uH1Dy_8KpRn2pNzRkXJZdN9hMUSlY&libraries=visualization&callback=initMap">
+    </script>
 </html>
