@@ -49,13 +49,13 @@
 				<div class="col-sm-4 col-sm-offset-2" style="padding-right: 5%; padding-left: 5%;">
 					Start Location<br>
 					<div class="row">
-			  			<input class="form-control" style="width: 100%;" type="text" name="start" id="start"/>
+			  			<input class="form-control" style="width: 100%;" type="text" name="start" id="start" placeholder="Your starting location"/>
 			  			<button class="btn btn-primary" style="width: 100%;" type="button" id="loadLocation">Use Current Location</button>
 					</div>
 
 		  			Destination<br>
 					<div class="row">
-			  			<input class="form-control" style="width: 100%;" type="text" name="end" id="end"/>
+			  			<input class="form-control" style="width: 100%;" type="text" name="end" id="end" placeholder="Your destination"/>
 			  			<button class="btn btn-primary" style="width: 100%;" type="button" id="search">Find Route</button><br>
 					</div>
 				</div>
@@ -83,10 +83,12 @@
 	</body>
     <script>
 	var map, heatmap, directionsDisplay, directionsService, geocoder, crimeTimeArray, crimeArray, currentTime, mapBounds, uriOrigin, uriDestination;
+    var defaultLat = 33.777251;
+    var defaultLng = -84.396185;
 
 	function initMap() {
 		map = new google.maps.Map(document.getElementById('map'), {
-		  center: {lat: 33.777251, lng: -84.396185},
+		  center: {lat: defaultLat, lng: defaultLng},
 		  zoom: 16,
 		  mapTypeId: 'roadmap'
 		});
@@ -135,10 +137,17 @@
 
 		if (navigator.geolocation) {
 		     navigator.geolocation.getCurrentPosition(function (position) {
-		        initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-		        map.setCenter(initialLocation);
-		        map.setZoom(16);
-		        codeAddress(initialLocation);
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+                var distance = getDistance(defaultLat, defaultLng, lat, lng)
+                if(distance < 10000) {
+                    //uses actual location if you're within 10000 meters of campus
+                    //else keeps default location
+                    initialLocation = new google.maps.LatLng(lat, lng);
+                    map.setCenter(initialLocation);
+                    map.setZoom(16);
+                    codeAddress(initialLocation);
+                }
 	     	});
 		}
 	}
@@ -214,8 +223,6 @@
 		var routeNumber = 0;
 		var minCrimeHits = 100000;
 		var bestRouteIndex = 0;
-		console.log("results length");
-		console.log(results.routes.length);
 		$.each(results.routes, function(index, value) {
 			var crimeHits = 0;
 			var legs = value.legs;
@@ -231,18 +238,15 @@
 			}
 			$.each(crimeArray, function(index, value) {
 				if (google.maps.geometry.poly.isLocationOnEdge(value, polyline, .00015)) {
-    				console.log("got a hit");
     				crimeHits = crimeHits + 1;
   				}
 			})
-			console.log("crime hits " + crimeHits)
 			if (crimeHits < minCrimeHits) {
 				minCrimeHits = crimeHits;
 				bestRouteIndex = routeNumber;
 			}
 			routeNumber = routeNumber + 1;
 		});
-		console.log($.type(results.routes));
 		return bestRouteIndex;
   	}
 
@@ -286,7 +290,6 @@
 	  	directionsService.route(request, function(results, status) {
 	    	if (status == 'OK') {
 	    		bestRoute = findBestPath(results);
-	    		console.log(bestRoute);
 	    		directionsDisplay.setMap(null);
 	    		directionsDisplay = new google.maps.DirectionsRenderer({
                 	map: map,
@@ -298,6 +301,26 @@
 	  	$("#openInGoogleMaps").show();
   	}
 
+    function getDistance(lat1, lon1, lat2, lon2) {
+        var R = 6371e3; // radius of earth in meters
+        var lat1Rad = toRadians(lat1);
+        var lat2Rad = toRadians(lat2);
+        var deltaLat = toRadians(lat2-lat1);
+        var deltaLon = toRadians(lon2-lon1);
+
+        var a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+                Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+                Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+        var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        var d = R * c;
+        return d; //in meters
+    }
+
+    function toRadians(value) {
+        return value * Math.PI / 180;
+    }
+
 	$("#search").click(function() {
 		if ($("#start").val().length != 0 && $("#end").val().length != 0) {
             search();
@@ -307,9 +330,18 @@
 	$("#loadLocation").click(function() {
 		if (navigator.geolocation) {
 		     navigator.geolocation.getCurrentPosition(function (position) {
-		        initialLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-		        map.setCenter(initialLocation);
-		        codeAddress(initialLocation);
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+                var distance = getDistance(defaultLat, defaultLng, lat, lng)
+                if(distance < 10000) {
+                    //uses actual location if you're within 10000 meters of campus
+                    //else keeps default location
+                    initialLocation = new google.maps.LatLng(lat, lng);
+                    map.setCenter(initialLocation);
+                    codeAddress(initialLocation);
+                } else {
+                    $("#start").attr("placeholder", "You're too far from campus to use your current location");
+                }
 	     	});
 		}
 	});
